@@ -5,202 +5,213 @@
 // Return X-Auth header for given nicehash request parameters
 function get_nicehash_auth($apikey, $apisecret, $time, $nonce, $organization, $method, $path, $querystring, $body, $json)
 {
-    $data =
-        mb_convert_encoding($apikey, "ISO-8859-1") . "\0" .
-        mb_convert_encoding($time, "ISO-8859-1") . "\0" .
-        mb_convert_encoding($nonce, "ISO-8859-1") . "\0" .
-        "\0" .
-        mb_convert_encoding($organization, "ISO-8859-1") . "\0" .
-        "\0" .
-        mb_convert_encoding($method, "ISO-8859-1") . "\0" .
-        mb_convert_encoding($path, "ISO-8859-1") . "\0" .
-        mb_convert_encoding($querystring, "ISO-8859-1") . "\0";
-    if ($json) {
-        $data .= mb_convert_encoding($body, "UTF-8");
-    } else {
-        $data .= $body;
-    }
-    return hash_hmac("sha256",  $data, $apisecret);
+	$data =
+		mb_convert_encoding($apikey, "ISO-8859-1") . "\0" .
+		mb_convert_encoding($time, "ISO-8859-1") . "\0" .
+		mb_convert_encoding($nonce, "ISO-8859-1") . "\0" .
+		"\0" .
+		mb_convert_encoding($organization, "ISO-8859-1") . "\0" .
+		"\0" .
+		mb_convert_encoding($method, "ISO-8859-1") . "\0" .
+		mb_convert_encoding($path, "ISO-8859-1") . "\0" .
+		mb_convert_encoding($querystring, "ISO-8859-1");
+
+	if ($json && $body != "") {
+		$data .= "\0" . mb_convert_encoding($body, "UTF-8");
+	} else if ($body != "") {
+		$data .= "\0" . $body;
+	}
+	return hash_hmac("sha256",  $data, $apisecret);
 }
 
 // Build a nicehash API v2 request and execute it, returning result.
-function execute_nicehash_request($url, $method, $body, $public, $json) {
-    if ($public) {
-        // Public requests don't need signing headers
-        $s = curl_init();
-        curl_setopt($s, CURLOPT_URL, "https://api2.nicehash.com" . $url);
-        curl_setopt($s, CURLOPT_RETURNTRANSFER, true);
-        $res = curl_exec($s);
-        curl_close($s);
-        if ($res === false) {
-            return null;
-        }
-        return $res;
-    }
-    $apikey = NICEHASH_API_KEY;
-    $url_ary = explode("?", $url);
-    $path = $url_ary[1];
-    $querystring = $url_ary[2];
-    $apisecret = ""; // TODO add apisecret to config
-    $organization = ""; // TODO add organisation to config
-    $time = round(microtime(true) * 1000);
-    $nonce = gen_uuid();
-    $request_id = gen_uuid(); // Just generate an uuid, this field isn't really applicable here.
-    $auth = get_nicehash_auth($apikey, $apisecret, $time, $nonce, $organization, $method, $path, $querystring, $body, $json);
+function execute_nicehash_request($url, $method, $body, $pub, $json) {
+	if ($pub) {
+		// Public requests don't need signing headers
+		$s = curl_init();
+		curl_setopt($s, CURLOPT_URL, "https://api-test.nicehash.com" . $url);
+		curl_setopt($s, CURLOPT_RETURNTRANSFER, true);
+		$res = curl_exec($s);
+		curl_close($s);
+		if ($res === false) {
+			return null;
+		}
+		return $res;
+	}
+	// $apikey = NICEHASH_API_KEY;
+	$apikey = "e456901d-f086-4f5d-aa2e-08bd9d63c0c7";
+	$url_ary = explode("?", $url);
+	$path = $url_ary[0];
+	$querystring = "";
+	if (count($url_ary) > 1) {
+		$querystring = $url_ary[1];
+	}
+	$apisecret = "756ec452-415d-4762-8fab-ac5324bf1c7411c38679-9905-4d22-a071-4456b738e9dd"; // TODO add apisecret to config
+	$organization = "7f669d6d-1419-46ee-93eb-a63198a41094"; // TODO add organisation to config
+	$time = round(microtime(true) * 1000);
+	$nonce = gen_uuid();
+	$request_id = gen_uuid(); // Just generate an uuid, this field isn't really applicable here.
+	$auth = get_nicehash_auth($apikey, $apisecret, $time, $nonce, $organization, $method, $path, $querystring, $body, $json);
 
-    $curl_opts = array(
-        "X-Time: " . $time,
-        "X-Nonce: " . $nonce,
-        "X-Organization-Id: " . $organization,
-        "X-Request-Id: " . $request_id,
-        "X-Auth: " . $apikey . ":" . $auth
-    );
+	$curl_opts = array(
+		"X-Time: " . $time,
+		"X-Nonce: " . $nonce,
+		"X-Organization-Id: " . $organization,
+		"X-Request-Id: " . $request_id,
+		"X-Auth: " . $apikey . ":" . $auth
+	);
 
-    if ($json) {
-        array_push($curl_opts, "Accept: application/json;charset=UTF-8");
-    }
+	$s = curl_init();
 
-    $s = curl_init();
-    curl_setopt($s, CURLOPT_URL, "https://api2.nicehash.com" . $url);
-    curl_setopt($s, CURLOPT_HTTPHEADER, $curl_opts);
-    curl_setopt($s, CURLOPT_RETURNTRANSFER, true);
-    $res = curl_exec($s);
-    curl_close($s);
-    if ($res === false) {
-        return null;
-    }
-    return $res;
+	if ($json) {
+		array_push($curl_opts, "Content-Type: application/json");
+		array_push($curl_opts, "Content-Length: " . strlen($body));
+		array_push($curl_opts, "Accept: application/json;charset=UTF-8");
+		curl_setopt($s, CURLOPT_POSTFIELDS, $body);
+	}
+
+	curl_setopt($s, CURLOPT_URL, "https://api-test.nicehash.com" . $url);
+	curl_setopt($s, CURLOPT_HTTPHEADER, $curl_opts);
+	curl_setopt($s, CURLOPT_CUSTOMREQUEST, $method);
+	curl_setopt($s, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($s, CURLINFO_HEADER_OUT, true);
+	$res = curl_exec($s);
+	curl_close($s);
+	if ($res === false) {
+		return null;
+	}
+	return $res;
 }
 
 // Turn a decimal number to API v2 compliant string value
 function nicehash_num2str($num) {
-    return number_format($num, 8, ".", "");
+	return number_format($num, 8, ".", "");
 }
 
 function nicehash_account($currency) {
-    return execute_nicehash_request(
-        "/main/api/v2/accounting/account/" . $currency, "GET",
-        "",
-        false, false
-    );
+	return execute_nicehash_request(
+		"/main/api/v2/accounting/account/" . $currency, "GET",
+		"",
+		false, false
+	);
 }
 
 function nicehash_stats_global_current() {
-    return execute_nicehash_request(
-        "/main/api/v2/public/stats/global/current/", "GET",
-        "",
-        true, false
-    );
+	return execute_nicehash_request(
+		"/main/api/v2/public/stats/global/current", "GET",
+		"",
+		true, false
+	);
 }
 
 function nicehash_order_remove($id) {
-    return execute_nicehash_request(
-        "/main/api/v2/hashpower/order/" . $id, "DELETE",
-        "",
-        false, false
-    );
+	return execute_nicehash_request(
+		"/main/api/v2/hashpower/order/" . $id, "DELETE",
+		"",
+		false, false
+	);
 }
 
 function nicehash_orders_get_my($algo) {
-    return execute_nicehash_request(
-        "/main/api/v2/hashpower/myOrders?algo=" . $algo . "&limit=1", "GET",
-        "",
-        false, false
-    );
+	return execute_nicehash_request(
+		"/main/api/v2/hashpower/myOrders?algorithm=" . $algo . "&ts=".round(microtime(true) * 1000)."&op=LE&limit=1", "GET",
+		"",
+		false, false
+	);
 }
 
 function nicehash_order_create($type, $limit, $poolId, $price, $marketFactor, $displayMarketFactor, $amount, $algorithm, $market) {
-    $body = array(
-        "type" => $type,
-        "limit" => nicehash_num2str($limit),
-        "poolId" => $poolId,
-        "price" => nicehash_num2str($price),
-        "marketFactor" => nicehash_num2str($marketFactor),
-        "displayMarketFactor" => $displayMarketFactor,
-        "amount" => nicehash_num2str($amount),
-        "algorithm" => $algorithm,
-        "market" => $market
-    );
-    return execute_nicehash_request(
-        "/main/api/v2/hashpower/order", "POST",
-        json_encode($body),
-        false, true
-    );
+	$body = array(
+		"type" => $type,
+		"limit" => nicehash_num2str($limit),
+		"poolId" => $poolId,
+		"price" => nicehash_num2str($price),
+		"marketFactor" => nicehash_num2str($marketFactor),
+		"displayMarketFactor" => $displayMarketFactor,
+		"amount" => nicehash_num2str($amount),
+		"algorithm" => $algorithm,
+		"market" => $market
+	);
+	return execute_nicehash_request(
+		"/main/api/v2/hashpower/order/", "POST",
+		json_encode($body),
+		false, true
+	);
 }
 
 function nicehash_order_update_price_and_limit($order, $price, $limit) {
-    $body = array(
-        "marketFactor" => nicehash_num2str($order->marketFactor),
-        "displayMarketFactor" => nicehash_num2str($order->displayMarketFactor),
-        "limit" => nicehash_num2str($limit),
-        "price" => nicehash_num2str($price)
-    );
-    return execute_nicehash_request(
-        "/main/api/v2/hashpower/order/" . $order->id . "/updatePriceAndLimit","POST",
-        json_encode($body),
-        false, true
-    );
+	$body = array(
+		"marketFactor" => nicehash_num2str($order->marketFactor),
+		"displayMarketFactor" => nicehash_num2str($order->displayMarketFactor),
+		"limit" => nicehash_num2str($limit),
+		"price" => nicehash_num2str($price)
+	);
+	return execute_nicehash_request(
+		"/main/api/v2/hashpower/order/" . $order->id . "/updatePriceAndLimit","POST",
+		json_encode($body),
+		false, true
+	);
 }
 
 function nicehash_order_refill($id, $amount) {
-    $body = array(
-        "amount" => nicehash_num2str($amount)
-    );
-    return execute_nicehash_request(
-        "/main/api/v2/hashpower/order/" . $id . "/refill", "POST",
-        json_encode($body),
-        false, true
-    );
+	$body = array(
+		"amount" => nicehash_num2str($amount)
+	);
+	return execute_nicehash_request(
+		"/main/api/v2/hashpower/order/" . $id . "/refill", "POST",
+		json_encode($body),
+		false, true
+	);
 }
 
 function nicehash_get_pools() {
-    return execute_nicehash_request(
-        "/main/api/v2/pools/", "GET",
-        "",
-        false, false
-    );
+	return execute_nicehash_request(
+		"/main/api/v2/pools", "GET",
+		"",
+		false, false
+	);
 }
 
 function nicehash_create_pool($status, $host, $port, $username, $password, $algo, $name) {
-    $body = array(
-        "status" => $status,
-        "password" => $password,
-        "username" => $username,
-        "stratumPort" => $port,
-        "stratumHostname" => $host,
-        "algorithm" => $algo,
-        "name" => $name
-    );
-    return execute_nicehash_request(
-        "/main/api/v2/pool/", "POST",
-        json_encode($body),
-        false, true
-    );
+	$body = array(
+		"status" => $status,
+		"password" => $password,
+		"username" => $username,
+		"stratumPort" => $port,
+		"stratumHostname" => $host,
+		"algorithm" => $algo,
+		"name" => $name
+	);
+	return execute_nicehash_request(
+		"/main/api/v2/pool/", "POST",
+		json_encode($body),
+		false, true
+	);
 }
 
 // Returns pool ID for specified pool data. Creates pool for organization if it doesn't already exist.
 // This is required because API v2 removed support for directly providing pool parameters.
 function nicehash_get_pool_id($host, $port, $username, $password, $algorithm) {
-    // Check if a pool already exists
-    $res = nicehash_get_pools();
-    if (!$res) {
-        throw new Exception("Failed to request pools");
-    }
-    $data = json_decode($res);
-    foreach ($data->list as $pool) {
-        if ($pool->host == $host && $pool->port == $port && $pool->username == $username && $pool->password == $password && $pool->algorithm == $algorithm) {
-            // Found a pool matching parameters
-            return $pool->id;
-        }
-    }
+	// Check if a pool already exists
+	$res = nicehash_get_pools();
+	if (!$res) {
+		throw new Exception("Failed to request pools");
+	}
+	$data = json_decode($res);
+	foreach ($data->list as $pool) {
+		if ($pool->stratumHostname == $host && $pool->stratumPort == $port && $pool->username == $username && $pool->password == $password && $pool->algorithm == $algorithm) {
+			// Found a pool matching parameters
+			return $pool->id;
+		}
+	}
 
-    // No pool found, create it
-    $res = nicehash_create_pool("VERIFIED", $host, $port, $username, $password, $algorithm, "YAAMP pool");
-    if (!$res) {
-        throw new Exception("Failed to create pool");
-    }
-    $data = json_decode($res);
-    return $data->id;
+	// No pool found, create it
+	$res = nicehash_create_pool("VERIFIED", $host, $port, $username, $password, $algorithm, "YAAMP pool");
+	if (!$res) {
+		throw new Exception("Failed to create pool");
+	}
+	$data = json_decode($res);
+	return $data->id;
 }
 
 function BackendUpdateServices()
@@ -326,7 +337,7 @@ function BackendUpdateServices()
 		{
 			if($nicehash->orderid)
 			{
-			    $res = nicehash_order_remove($nicehash->orderId);
+				$res = nicehash_order_remove($nicehash->orderId);
 				debuglog($res);
 
 				$nicehash->orderid = null;
@@ -387,7 +398,7 @@ function BackendUpdateServices()
 		else if($order->price > $maxprice && $order->limit == 0)
 		{
 			debuglog("* decrease speed $algo");
-            $res = nicehash_order_update_price_and_limit($order, $order->price, 0.05);
+			$res = nicehash_order_update_price_and_limit($order, $order->price, 0.05);
 			debuglog($res);
 		}
 
@@ -404,7 +415,7 @@ function BackendUpdateServices()
 		else if($order->price < $minprice && $order->rigsCount <= 0)
 		{
 			debuglog("* increase price $algo");
-            nicehash_order_update_price_and_limit($order, $setprice, $order->limit);
+			nicehash_order_update_price_and_limit($order, $setprice, $order->limit);
 			debuglog($res);
 		}
 
@@ -418,7 +429,7 @@ function BackendUpdateServices()
 		else if($order->availableAmount < 0.00075000)
 		{
 			debuglog("* refilling order $order->id");
-            $res = nicehash_order_refill($order->id, 0.01);
+			$res = nicehash_order_refill($order->id, 0.01);
 			debuglog($res);
 		}
 
