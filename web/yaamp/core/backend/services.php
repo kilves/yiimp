@@ -29,7 +29,7 @@ function execute_nicehash_request($url, $method, $body, $pub, $json) {
 	if ($pub) {
 		// Public requests don't need signing headers
 		$s = curl_init();
-		curl_setopt($s, CURLOPT_URL, "https://api-test.nicehash.com" . $url);
+		curl_setopt($s, CURLOPT_URL, "https://api2.nicehash.com" . $url);
 		curl_setopt($s, CURLOPT_RETURNTRANSFER, true);
 		$res = curl_exec($s);
 		curl_close($s);
@@ -39,15 +39,15 @@ function execute_nicehash_request($url, $method, $body, $pub, $json) {
 		return $res;
 	}
 	// $apikey = NICEHASH_API_KEY;
-	$apikey = "e456901d-f086-4f5d-aa2e-08bd9d63c0c7";
+	$apikey = "";
 	$url_ary = explode("?", $url);
 	$path = $url_ary[0];
 	$querystring = "";
 	if (count($url_ary) > 1) {
 		$querystring = $url_ary[1];
 	}
-	$apisecret = "756ec452-415d-4762-8fab-ac5324bf1c7411c38679-9905-4d22-a071-4456b738e9dd"; // TODO add apisecret to config
-	$organization = "7f669d6d-1419-46ee-93eb-a63198a41094"; // TODO add organisation to config
+	$apisecret = ""; // TODO add apisecret to config
+	$organization = ""; // TODO add organisation to config
 	$time = round(microtime(true) * 1000);
 	$nonce = gen_uuid();
 	$request_id = gen_uuid(); // Just generate an uuid, this field isn't really applicable here.
@@ -70,7 +70,7 @@ function execute_nicehash_request($url, $method, $body, $pub, $json) {
 		curl_setopt($s, CURLOPT_POSTFIELDS, $body);
 	}
 
-	curl_setopt($s, CURLOPT_URL, "https://api-test.nicehash.com" . $url);
+	curl_setopt($s, CURLOPT_URL, "https://api2.nicehash.com" . $url);
 	curl_setopt($s, CURLOPT_HTTPHEADER, $curl_opts);
 	curl_setopt($s, CURLOPT_CUSTOMREQUEST, $method);
 	curl_setopt($s, CURLOPT_RETURNTRANSFER, true);
